@@ -8,31 +8,21 @@ clients = []  # List to keep track of connected clients
 messages = []  # List to store messages
 
 def client_thread(conn, addr):
-    conn.sendall("Choose chat mode: 1 for Public, 2 for Private".encode())
+    
+    conn.sendall("\nChoose chat mode: 1 for Public, 2 for Private".encode())
     mode = conn.recv(1024).decode()
-    username = conn.recv(1024).decode()  # Get username at the beginning for both modes.
+
+    # Check for duplicate usernames
+    username = check_username(conn)
 
     # Handle public chat mode
     if mode == "1":  # Public chat
-        # Check for duplicate usernames
-        while any(c['username'] == username for c in clients if c['group_id'] == 0):
-            conn.send("taken".encode())
-            username = conn.recv(1024).decode()
-        conn.send("Valid username!".encode())
-
+        public_chat(conn, username)
         group_id = 0  # Zero indicates the public group
-        welcome_message = f"{username} has joined the public chat."
-        clients.append({'conn': conn, 'username': username, 'group_id': group_id})
-        broadcast(welcome_message, username, group_id)
-        send_recent_messages(conn, group_id)
+
+    # Handle private chat mode
     else:  # Private chat
-        conn.sendall("Available groups:\n" + "\n".join([f"{id}: {name}" for id, name in groups.items()]).encode())
-        group_id = int(conn.recv(1024).decode())
-        group_name = groups[group_id]
-        welcome_message = f"{username} has joined {group_name}."
-        clients.append({'conn': conn, 'username': username, 'group_id': group_id})
-        broadcast(welcome_message, username, group_id)
-        send_recent_messages(conn, group_id)
+        group_id = private_chat(conn, username)
 
     # Common message receiving loop
     while True:
@@ -40,7 +30,7 @@ def client_thread(conn, addr):
             message = conn.recv(1024).decode()
             if message == 'quit':
                 remove(conn, username, group_id)
-                broadcast(f"{username} has left the chat.", username, group_id)
+                #broadcast(f"{username} has left the chat.", username, group_id)
                 break
             elif message:
                 formatted_message = f"{len(messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, {message}"
@@ -49,7 +39,7 @@ def client_thread(conn, addr):
             else:
                 remove(conn, username, group_id)
                 break
-        except:
+        except: # If something is wrong with the message, the code will just move to the next message
             continue
 
 def broadcast(message, sender, group_id):
@@ -70,12 +60,42 @@ def send_recent_messages(conn, group_id):
             conn.sendall(message.encode() + b'\n')
 
 def remove(conn, username, group_id):
-    for i, client in enumerate(clients):
-        if client['conn'] == conn:
-            conn.close()
-            clients.pop(i)
+    for c in clients:
+        if c['conn'] == conn:
             broadcast(f"{username} has left the chat.", username, group_id)
+            c['conn'].close()
+            clients.remove(c)
             break
+
+def check_username(conn):
+    username = conn.recv(1024).decode()  # Get username at the beginning for both modes.
+    
+    # Check for duplicate usernames
+    while any(c['username'] == username for c in clients): # NO DUPLICATES on entire server
+        conn.send("taken".encode())
+        username = conn.recv(1024).decode()
+        
+    conn.send("valid".encode())
+    return username
+
+def public_chat(conn, username):
+    welcome_message = f"{username} has joined the public chat."
+    create_client(conn, username, 0, welcome_message)
+
+def private_chat(conn, username):
+    conn.sendall("\n".join([f"{id}: {name}" for id, name in groups.items()]).encode())
+    group_id = int(conn.recv(1024).decode())
+    group_name = groups[group_id]
+    welcome_message = f"{username} has joined {group_name}."
+    create_client(conn, username, group_id, welcome_message)
+    
+    return group_id
+
+def create_client(conn, username, group_id, welcome_message):
+    clients.append({'conn': conn, 'username': username, 'group_id': group_id})
+    broadcast(welcome_message, username, group_id)
+    send_recent_messages(conn, group_id)
+
 
 def start_server():
     host = 'localhost'
