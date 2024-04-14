@@ -2,56 +2,103 @@ import socket
 import threading
 import os
 
-prompt = "Enter your message: "
-
 def client_program():
     
-    # host IP and port number
-    host = 'localhost'
-    port = 12345
-    
-    # establish client socket and connect to server
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((host, port))
+    client_socket = choose_server_and_port()
     
     # choose public or private chat mode
     mode = choose_chat_mode(client_socket)
 
     # Ask user for username check for duplicates with server
-    choose_username(client_socket)  
+    username = choose_username(client_socket)  
+    prompt = f"{username}: "
 
     # if user chose private chat mode
     if mode == "2":
         pick_group_id(client_socket)
     
     # start thread to continually check for incoming messages from server
-    threading.Thread(target=receive_messages, args=(client_socket,)).start()
+    threading.Thread(target=receive_messages, args=(client_socket, prompt)).start()
     # parent thread will continualy send user messages to server
-    send_messages(client_socket)
+    send_messages(client_socket, prompt)
 
 # Gets user input and sends it to the server   
-def send_messages(client_socket):
+def send_messages(client_socket, prompt):
     while True:
         message = input(prompt) # Allow the client to send messages
-        client_socket.send(message.encode())
-        if message == "quit": # If the client types 'quit', close the connection
-            # client_socket.send(message.encode())
-            client_socket.close()
-            os._exit(0) # instead of break, kills client
+        
+        if message:
+            # calls function to choose new server and port
+            if message == "@connect":
+                client_socket.send('quit'.encode())
+                client_program()
+        
+            # allows user to join a new group
+            elif message.split(' ')[0] == "@join":
+                client_socket.send(message.encode())
+        
+            # allows user to leave a group
+            elif message.split(' ')[0] == "@leave":
+                client_socket.send(message.encode())
+            
+            # gets all users in the users groups
+            elif message == "@users":
+                client_socket.send(message.encode())
+            
+            # gets a single message for the user
+            elif message == "@message":
+                pass
+            
+            elif message == "@quit": # If the client types 'quit', close the connection
+                client_socket.send(message.encode())
+                client_socket.close()
+                os._exit(0) # instead of break, kills client
+            
+            elif message == "@help":
+                print_options()
+            
+            else: #any non-command will be sent/broadcast as a normal message
+                client_socket.send(message.encode())
 
 # constantly checks for incoming messages from server
-def receive_messages(client_socket):
+def receive_messages(client_socket, prompt):
     print(client_socket.recv(1024).decode()) # handles different formatting of initial message
     while True:
         try:
             message = client_socket.recv(1024).decode()
-            if message:
+            if message == '@q':
+                return
+            elif message:
                 print('\r{}\n{}'.format(message, prompt), end = '')
         except:
             print("\r\n\nYou have been disconnected.")
             print("\nIf you did not leave yourself, the server may have shut down.\n")
             os._exit(0) # instead of break, kills client
 
+"""
+HELPER FUNCTIONS
+"""
+
+def choose_server_and_port():
+    print("Default server address: 'localhost' \nDefault port: 12345 \nPress ENTER to accept defaults\n")
+    host = input("Enter server address: ")
+    port = input("Enter port number: ")
+    
+    if host == '':
+        host = 'localhost'
+    if port == '':
+        port = 12345
+    
+    server = (host, port)
+    try:
+        # establish client socket and connect to server
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(server)
+    except:
+        print("\nCannot find server and port.\n")
+        os._exit(0) # instead of break, kills client
+        
+    return client_socket
 
 # Check for valid chat mode input and reprompt
 def choose_chat_mode(client_socket):
@@ -81,6 +128,8 @@ def choose_username(client_socket):
             client_socket.send(username.encode())
         else: 
             break
+    
+    return username
 
 # for mode 2: show availible groups and take user input, reprompt if necessary
 def pick_group_id(client_socket):
@@ -94,5 +143,20 @@ def pick_group_id(client_socket):
         else: 
             group_id = input("INVALID GROUP ID, please enter valid group [1, 2, 3, 4, 5]: ")
     client_socket.send(group_id.encode())
+
+def print_options():
+    print("\nBegin your message with any of these commands (CASE SENSITIVE)")
+    print("\nCOMMANDS: ")
+    print("@connect: delete your current connection and allow you to reconnect to a new server and port")
+    print("@users: list all users and their groups if the user shares at least 1 group with you")
+    print("@join #: allows you to join a new group, replace '#' with the group you want to join")
+    print("         You can either belong to the single public message board")
+    print("         or any one or more of the private message boards")
+    print("@leave #: allows you to leave a group, replace '#' with the group you want to join")
+    print("          you must always belong to at least 1 group")
+    print("@quit: remove your connection from the server")
+    print("@help: reprint these command options")
+    print()
+
 
 client_program()
