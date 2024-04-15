@@ -42,7 +42,7 @@ def client_thread(conn, addr):
                     new_group = message.split(' ')[1]
                     join_group(conn, new_group, group_IDs)
                 
-                elif message.split(' ')[0] == "@leave":
+                elif message.split(' ')[0] == "@groupleave":
                     old_group = message.split(' ')[1]
                     leave_group(conn, old_group)
                 
