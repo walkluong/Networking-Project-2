@@ -46,8 +46,8 @@ def send_messages(client_socket, prompt):
                 client_socket.send(message.encode())
             
             # gets a single message for the user
-            elif message == "@message":
-                pass
+            elif message.split(' ')[0] == "@message":
+                client_socket.send(message.encode())
             
             elif message == "@quit": # If the client types 'quit', close the connection
                 client_socket.send(message.encode())

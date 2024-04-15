@@ -49,7 +49,10 @@ def client_thread(conn, addr):
                 elif message == '@users':
                     user_list = get_users(group_IDs)
                     conn.send(str(user_list).encode())
-            
+
+                elif message.split(' ')[0] == "@message":
+                    id = message.split(' ')[1]
+                    get_message(conn, id, group_IDs, all_messages)
                 
                 else:
                     formatted_message = f"[{len(all_messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
@@ -95,6 +98,21 @@ def remove(conn, username, group_IDs):
             c['conn'].close()
             break
 
+
+def get_message(conn, id, group_IDs, messages):
+    if id.isdigit():
+        if int(id) > len(messages):
+            conn.sendall(f"Message {id} does not exist".encode())
+        for msg in messages:
+            temp = msg[0]
+            if int(temp.replace(temp[0], "", 1).split(',')[0]) == int(id):
+                if any(num in msg[1] for num in group_IDs):
+                    conn.sendall(msg[0].encode() + b'\n')
+                else:
+                    conn.sendall(f"Message {id} was sent to a group you're not in.".encode())
+                return
+    else: 
+        conn.sendall(f"{id} is not a valid message id!".encode())
 
 def get_group_IDs(conn):
     for c in clients:
