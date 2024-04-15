@@ -32,25 +32,6 @@ def send_messages(client_socket, prompt):
             if message == "@connect":
                 client_socket.send('quit'.encode())
                 client_program()
-        
-            # allows user to join a new group
-            elif message.split(' ')[0] == "@join":
-                client_socket.send(message.encode())
-        
-            # allows user to leave a group
-            elif message.split(' ')[0] == "@groupleave":
-                client_socket.send(message.encode())
-            
-            elif message == "@groups":
-                client_socket.send(message.encode())
-            
-            # gets all users in the users groups
-            elif message == "@users":
-                client_socket.send(message.encode())
-            
-            # gets a single message for the user
-            elif message.split(' ')[0] == "@message":
-                client_socket.send(message.encode())
             
             elif message == "@quit": # If the client types 'quit', close the connection
                 client_socket.send(message.encode())
@@ -60,7 +41,7 @@ def send_messages(client_socket, prompt):
             elif message == "@help":
                 print_options()
             
-            else: #any non-command will be sent/broadcast as a normal message
+            else: #any non-client-command will be sent to the server to be handled
                 client_socket.send(message.encode())
 
 # constantly checks for incoming messages from server
