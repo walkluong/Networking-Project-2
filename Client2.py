@@ -149,6 +149,7 @@ def print_options():
     print("\nCOMMANDS: ")
     print("@connect: delete your current connection and allow you to reconnect to a new server and port")
     print("@users: list all users and their groups if the user shares at least 1 group with you")
+    print("@message #: retrieves a message from the server with the matching ID (#)")
     print("@join: allows you to join a new group, replace '#' with the group you want to join")
     print("         You can either belong to the single public message board")
     print("         or any one or more of the private message boards")
