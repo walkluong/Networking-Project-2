@@ -43,12 +43,12 @@ def client_thread(conn, addr):
                     leave_group(conn, old_group)
                 
                 elif message == '@users':
-                    user_list = get_users(group_IDs)
+                    user_list = get_users(get_group_IDs(conn))
                     conn.send(str(user_list).encode())
                 
                 else:
-                    formatted_message = f"{len(messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, {message}"
-                    messages.append((formatted_message, group_IDs))  # Store message with group_ids
+                    formatted_message = f"[{len(messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
+                    messages.append((formatted_message, get_group_IDs(conn)))  # Store message with group_ids
                     broadcast(formatted_message, username, group_IDs)
             else:
                 remove(conn, username, group_IDs)
@@ -67,9 +67,9 @@ def broadcast(message, sender, group_IDs):
                 remove(client['conn'], client['username'], client['group_id_list'])
 
 
-def send_recent_messages(conn, group_IDs):
+def send_recent_messages(conn, group_id):
     # Send the last two messages from the history to a new client
-    relevant_messages = [msg for msg, gid in messages if gid == group_IDs]
+    relevant_messages = [msg for msg, gid in messages if gid == group_id]
     if not relevant_messages:
         conn.sendall("No recent messages".encode() + b'\n')
     else:
@@ -86,6 +86,12 @@ def remove(conn, username, group_IDs):
             break
 
 
+def get_group_IDs(conn):
+    for c in clients:
+        if c['conn'] == conn:
+            return c['group_id_list']
+
+
 def join_group(conn, new_group):
     new_group = int(new_group)
     for c in clients:
@@ -95,12 +101,14 @@ def join_group(conn, new_group):
                     c['group_id_list'] = [0]
                     conn.send(f"You have joined group {new_group} and left all other groups".encode())
                     broadcast(f"{c['username']} has joined the public chat.", c['username'], c['group_id_list'])
+                    send_recent_messages(conn, new_group)
                 elif new_group in [1, 2, 3, 4, 5]:
                     c['group_id_list'].append(new_group)
                     if 0 in c['group_id_list']: 
                         c['group_id_list'].remove(0)
                     conn.send(f"You have joined group {new_group}, you may no longer be in group 0".encode())
                     broadcast(f"{c['username']} has joined group {new_group}.", c['username'], c['group_id_list'])
+                    send_recent_messages(conn, new_group)
                 else: 
                     conn.send(f"Group {new_group} doesn't exist".encode())
             else:
@@ -162,7 +170,7 @@ def private_chat(conn, username):
 def create_client(conn, username, group_IDs, welcome_message):
     clients.append({'conn': conn, 'username': username, 'group_id_list': group_IDs})
     broadcast(welcome_message, username, group_IDs)
-    send_recent_messages(conn, group_IDs)
+    send_recent_messages(conn, group_IDs[0])
     
     return group_IDs
 
