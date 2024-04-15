@@ -2,6 +2,9 @@ import socket
 import threading
 import datetime
 
+host = 'localhost'  # socket.gethostbyname(socket.gethostname())
+port = 12345
+
 # Define groups for private chat
 groups = {1: "Group 1", 2: "Group 2", 3: "Group 3", 4: "Group 4", 5: "Group 5"}
 clients = []  # List to keep track of connected clients
@@ -37,6 +40,9 @@ def client_thread(conn, addr):
                 
                 elif message == '@join':
                     join_public(conn)
+                    
+                elif message == '@groups':
+                    get_groups(conn)
                 
                 elif message.split(' ')[0] == "@groupjoin":
                     new_group = message.split(' ')[1]
@@ -46,9 +52,17 @@ def client_thread(conn, addr):
                     old_group = message.split(' ')[1]
                     leave_group(conn, old_group)
                 
+                elif message.split(' ')[0] == "@grouppost":
+                    groupId = int(message.split(' ')[1])
+                    groupMessage = ' '.join(message.split(' ')[2:])
+                    post_group(conn, groupId, groupMessage, username)
+                
                 elif message == '@users':
-                    user_list = get_users(group_IDs)
-                    conn.send(str(user_list).encode())
+                    get_users(conn, group_IDs, False)
+                    
+                elif message.split(' ')[0] == '@groupusers':
+                    gid = int(message.split(' ')[1])
+                    get_users(conn, [gid], True)
 
                 elif message.split(' ')[0] == "@message":
                     id = message.split(' ')[1]
@@ -114,6 +128,7 @@ def get_message(conn, id, group_IDs, messages):
     else: 
         conn.sendall(f"{id} is not a valid message id!".encode())
 
+
 def get_group_IDs(conn):
     for c in clients:
         if c['conn'] == conn:
@@ -127,6 +142,7 @@ def join_public(conn):
             conn.send(f"You have joined the public group and left all private groups".encode())
             broadcast(f"{c['username']} has joined the public chat.", c['username'], c['group_id_list'])
             send_recent_messages(conn, 0, all_messages)
+
 
 def join_group(conn, new_group, group_IDs):
     new_group = int(new_group)
@@ -163,13 +179,41 @@ def leave_group(conn, old_group):
                 conn.send(f"Your not in group {old_group} or it may not exist".encode())
             return
 
-def get_users(group_IDs):
+def get_users(conn, group_IDs, justGroupUsers):
     users = []
-    for client in clients:
-        if any(num in client['group_id_list'] for num in group_IDs):
-            users.append((client['username'], set(client['group_id_list']).intersection(group_IDs)))
     
-    return users
+    if justGroupUsers:
+        if group_IDs[0] in get_group_IDs(conn):
+            for client in clients:
+                if any(num in client['group_id_list'] for num in group_IDs):
+                    users.append((client['username'], set(client['group_id_list']).intersection(group_IDs)))
+        elif group_IDs[0] not in [1,2,3,4,5]:
+            conn.send(f"Group {group_IDs[0]} does not exist".encode())
+        else:
+            conn.send(f"Must join {group_IDs[0]} to see users".encode())
+    
+    else: 
+        for client in clients:
+            if any(num in client['group_id_list'] for num in group_IDs):
+                users.append((client['username'], set(client['group_id_list']).intersection(group_IDs)))
+    
+    conn.send(str(users).encode())
+
+
+def get_groups(conn):
+    conn.sendall("\n".join([f"{id}: {name}" for id, name in groups.items()]).encode())
+
+
+def post_group(conn, groupId, groupMessage, username):
+    if groupId in [1,2,3,4,5]: 
+        if groupId in get_group_IDs(conn):
+            formatted_message = f"[{len(all_messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {groupMessage}"
+            all_messages.append((formatted_message, [groupId]))  # Store message with group_ids
+            broadcast(formatted_message, username, [groupId])
+        else: 
+            conn.send(f"Can't send to {groupId} without joining".encode())
+    else:
+        conn.send(f"Group {groupId} doesn't exsist".encode())
 
 
 def check_username(conn):
@@ -191,7 +235,7 @@ def public_chat(conn, username):
 
 
 def private_chat(conn, username):
-    conn.sendall("\n".join([f"{id}: {name}" for id, name in groups.items()]).encode())
+    get_groups(conn)
     group_IDs = []
     group_IDs.append(int(conn.recv(1024).decode()))
     group_name = groups[group_IDs[0]]
@@ -209,8 +253,6 @@ def create_client(conn, username, group_IDs, welcome_message):
 
 
 def start_server():
-    host = 'localhost'
-    port = 12345
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((host, port))
