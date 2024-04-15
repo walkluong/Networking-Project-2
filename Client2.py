@@ -149,12 +149,16 @@ def print_options():
     print("\nCOMMANDS: ")
     print("@connect: delete your current connection and allow you to reconnect to a new server and port")
     print("@users: list all users and their groups if the user shares at least 1 group with you")
-    print("@join #: allows you to join a new group, replace '#' with the group you want to join")
+    print("@join: allows you to join a new group, replace '#' with the group you want to join")
     print("         You can either belong to the single public message board")
     print("         or any one or more of the private message boards")
     print("@leave #: allows you to leave a group, replace '#' with the group you want to join")
     print("          you must always belong to at least 1 group")
     print("@quit: remove your connection from the server")
+    
+    print("@groupjoin #: allows you to join a new private group, replace '#' with the group you want to join")
+    print("              This will remove you from the public group but you can belong to multiple private groups")
+    print("              Must join 1 group at a time")
     print("@help: reprint these command options")
     print()
 
