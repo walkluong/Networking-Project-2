@@ -38,7 +38,10 @@ def send_messages(client_socket, prompt):
                 client_socket.send(message.encode())
         
             # allows user to leave a group
-            elif message.split(' ')[0] == "@leave":
+            elif message.split(' ')[0] == "@groupleave":
+                client_socket.send(message.encode())
+            
+            elif message == "@groups":
                 client_socket.send(message.encode())
             
             # gets all users in the users groups
@@ -145,21 +148,23 @@ def pick_group_id(client_socket):
     client_socket.send(group_id.encode())
 
 def print_options():
-    print("\nBegin your message with any of these commands (CASE SENSITIVE)")
+    print("\nUse these commands as they appear (CASE SENSITIVE)")
     print("\nCOMMANDS: ")
     print("@connect: delete your current connection and allow you to reconnect to a new server and port")
     print("@users: list all users and their groups if the user shares at least 1 group with you")
     print("@message #: retrieves a message from the server with the matching ID (#)")
-    print("@join: allows you to join a new group, replace '#' with the group you want to join")
-    print("         You can either belong to the single public message board")
-    print("         or any one or more of the private message boards")
-    print("@leave #: allows you to leave a group, replace '#' with the group you want to join")
-    print("          you must always belong to at least 1 group")
+    print("@join: joins the public group and removes you from all private groups")
     print("@quit: remove your connection from the server")
     
+    print("@groups: retrieves a list of all groups that can be joined")
     print("@groupjoin #: allows you to join a new private group, replace '#' with the group you want to join")
     print("              This will remove you from the public group but you can belong to multiple private groups")
-    print("              Must join 1 group at a time")
+    print("              Must join 1 group per command")
+    print("@groupleave #: allows you to leave a group, replace '#' with the group you want to join")
+    print("               you must always belong to at least 1 group")
+    print("@grouppost # MSG: post a message to a message specific group (#) with a message (MSG)")
+    print("@groupusers #: retrieve a list of users in the given group (#)")
+    print("               You must belong to a group to see the users")
     print("@help: reprint these command options")
     print()
 
