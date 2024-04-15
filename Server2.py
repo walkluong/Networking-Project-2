@@ -26,6 +26,7 @@ def client_thread(conn, addr):
     # Common message receiving loop
     while True:
         try:
+            group_IDs = get_group_IDs(conn)
             message = conn.recv(1024).decode()
             if message:
                 if message == '@quit':
@@ -39,19 +40,20 @@ def client_thread(conn, addr):
                 
                 elif message.split(' ')[0] == "@groupjoin":
                     new_group = message.split(' ')[1]
-                    join_group(conn, new_group)
+                    join_group(conn, new_group, group_IDs)
                 
                 elif message.split(' ')[0] == "@leave":
                     old_group = message.split(' ')[1]
                     leave_group(conn, old_group)
                 
                 elif message == '@users':
-                    user_list = get_users(get_group_IDs(conn))
+                    user_list = get_users(group_IDs)
                     conn.send(str(user_list).encode())
+            
                 
                 else:
                     formatted_message = f"[{len(all_messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
-                    all_messages.append((formatted_message, get_group_IDs(conn)))  # Store message with group_ids
+                    all_messages.append((formatted_message, group_IDs))  # Store message with group_ids
                     broadcast(formatted_message, username, group_IDs)
             else:
                 remove(conn, username, group_IDs)
@@ -72,11 +74,16 @@ def broadcast(message, sender, group_IDs):
 
 def send_recent_messages(conn, group_id, messages):
     # Send the last two messages from the history to a new client
-    relevant_messages = [msg for msg, gid in messages if group_id in gid]
-    if not relevant_messages:
+    #relevant_messages = [msg for msg in messages if group_id in msg[1]]
+    temp = []
+    for msg in messages:
+        if group_id in msg[1]: 
+            temp.append(msg[0])
+        
+    if len(temp) == 0:
         conn.sendall("No recent messages".encode() + b'\n')
     else:
-        for message in relevant_messages[-2:]:
+        for message in temp[-2:]:
             conn.sendall(message.encode() + b'\n')
 
 
@@ -103,14 +110,17 @@ def join_public(conn):
             broadcast(f"{c['username']} has joined the public chat.", c['username'], c['group_id_list'])
             send_recent_messages(conn, 0, all_messages)
 
-def join_group(conn, new_group):
+def join_group(conn, new_group, group_IDs):
     new_group = int(new_group)
     for c in clients:
         if c['conn'] == conn:
             if new_group not in c['group_id_list'] and new_group in [1, 2, 3, 4, 5]:
-                c['group_id_list'].append(new_group)
-                if 0 in c['group_id_list']: 
-                    c['group_id_list'].remove(0)
+                
+                new_IDs = group_IDs + [new_group]             
+                if 0 in new_IDs: 
+                    new_IDs.remove(0)
+                c['group_id_list'] = new_IDs
+                    
                 conn.send(f"You have joined group {new_group}, you may no longer be in group 0".encode())
                 broadcast(f"{c['username']} has joined group {new_group}.", c['username'], c['group_id_list'])
                 send_recent_messages(conn, new_group, all_messages)
@@ -158,8 +168,8 @@ def check_username(conn):
 
 def public_chat(conn, username):
     welcome_message = f"{username} has joined the public chat."
-    
-    return create_client(conn, username, [0], welcome_message)
+    group_IDs = [0]
+    return create_client(conn, username, group_IDs, welcome_message)
 
 
 def private_chat(conn, username):
