@@ -38,7 +38,7 @@ def send_messages(client_socket, prompt):
                 client_socket.send(message.encode())
         
             # allows user to leave a group
-            elif message.split(' ')[0] == "@leave":
+            elif message.split(' ')[0] == "@groupleave":
                 client_socket.send(message.encode())
             
             # gets all users in the users groups
