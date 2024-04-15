@@ -32,7 +32,7 @@ def send_messages(client_socket, prompt):
             if message == "@connect":
                 client_socket.send('quit'.encode())
                 client_program()
-            
+           
             elif message == "@quit": # If the client types 'quit', close the connection
                 client_socket.send(message.encode())
                 client_socket.close()
