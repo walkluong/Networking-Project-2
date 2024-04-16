@@ -61,7 +61,7 @@
 
 ## 4. Send Messages:
 
-    - 
+    - Any non-command message you send will automatically be broadcast to all groups you are in. Have fun!
 
 # COMMANDS:
 
