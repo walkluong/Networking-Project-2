@@ -71,7 +71,7 @@ def client_thread(conn, addr):
                 else:
                     formatted_message = f"[{len(all_messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
                     all_messages.append((formatted_message, group_IDs))  # Store message with group_ids
-                    broadcast(formatted_message, username, group_IDs)
+                    broadcast(formatted_message, conn, group_IDs)
             else:
                 remove(conn, username, group_IDs)
                 print(f"Disconnected from {addr}")
@@ -80,9 +80,9 @@ def client_thread(conn, addr):
             continue
 
 
-def broadcast(message, sender, group_IDs):
+def broadcast(message, conn, group_IDs):
     for client in clients:
-        if (client['username'] != sender) and any(num in client['group_id_list'] for num in group_IDs):
+        if (client['conn'] != conn) and any(num in client['group_id_list'] for num in group_IDs):
             try:
                 client['conn'].sendall(message.encode())
             except:
@@ -107,7 +107,7 @@ def send_recent_messages(conn, group_id, messages):
 def remove(conn, username, group_IDs):
     for c in clients:
         if c['conn'] == conn:
-            broadcast(f"{username} has left the server.", username, group_IDs)
+            broadcast(f"{username} has left the server.", conn, group_IDs)
             clients.remove(c)
             c['conn'].close()
             break
@@ -140,7 +140,7 @@ def join_public(conn):
         if c['conn'] == conn:
             c['group_id_list'] = [0]
             conn.send(f"You have joined the public group and left all private groups".encode())
-            broadcast(f"{c['username']} has joined the public chat.", c['username'], c['group_id_list'])
+            broadcast(f"{c['username']} has joined the public chat.", c['conn'], c['group_id_list'])
             send_recent_messages(conn, 0, all_messages)
 
 
@@ -156,7 +156,7 @@ def join_group(conn, new_group, group_IDs):
                 c['group_id_list'] = new_IDs
                     
                 conn.send(f"You have joined group {new_group}, you may no longer be in group 0".encode())
-                broadcast(f"{c['username']} has joined group {new_group}.", c['username'], c['group_id_list'])
+                broadcast(f"{c['username']} has joined group {new_group}.", c['conn'], [new_group])
                 send_recent_messages(conn, new_group, all_messages)
             elif new_group not in [1, 2, 3, 4, 5]: 
                 conn.send(f"Group {new_group} doesn't exist".encode())
@@ -174,7 +174,7 @@ def leave_group(conn, old_group):
             elif old_group in c['group_id_list']:
                 c['group_id_list'].remove(old_group)
                 conn.send(f"You have left group {old_group}".encode())
-                broadcast(f"{c['username']} has left group {old_group}.", c['username'], c['group_id_list'])
+                broadcast(f"{c['username']} has left group {old_group}.", c['conn'], [old_group])
             else:
                 conn.send(f"Your not in group {old_group} or it may not exist".encode())
             return
@@ -209,7 +209,7 @@ def post_group(conn, groupId, groupMessage, username):
         if groupId in get_group_IDs(conn):
             formatted_message = f"[{len(all_messages)+1}, {username}, {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {groupMessage}"
             all_messages.append((formatted_message, [groupId]))  # Store message with group_ids
-            broadcast(formatted_message, username, [groupId])
+            broadcast(formatted_message, conn, [groupId])
         else: 
             conn.send(f"Can't send to {groupId} without joining".encode())
     else:
@@ -246,7 +246,7 @@ def private_chat(conn, username):
 
 def create_client(conn, username, group_IDs, welcome_message):
     clients.append({'conn': conn, 'username': username, 'group_id_list': group_IDs})
-    broadcast(welcome_message, username, group_IDs)
+    broadcast(welcome_message, conn, group_IDs)
     send_recent_messages(conn, group_IDs[0], all_messages)
     
     return group_IDs
