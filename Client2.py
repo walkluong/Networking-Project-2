@@ -30,9 +30,9 @@ def send_messages(client_socket, prompt):
         if message:
             # calls function to choose new server and port
             if message == "@connect":
-                client_socket.send('quit'.encode())
+                client_socket.send('@quit'.encode())
                 client_program()
-           
+            
             elif message == "@quit": # If the client types 'quit', close the connection
                 client_socket.send(message.encode())
                 client_socket.close()
@@ -103,12 +103,24 @@ def choose_chat_mode(client_socket):
 def choose_username(client_socket):
     
     username = input("\nEnter your username: ")
+    
+    while True:
+        if username == '':
+            username = input("Username can't be empty, enter a new username: ")
+        else: 
+            break
+        
     client_socket.send(username.encode())
     
     while True:
         message = client_socket.recv(1024).decode()
         if message == "taken":
             username = input("USERNAME TAKEN, enter a new username: ")
+            while True:
+                if username == '':
+                    username = input("Username can't be empty, enter a new username: ")
+                else: 
+                    break
             client_socket.send(username.encode())
         else: 
             break
