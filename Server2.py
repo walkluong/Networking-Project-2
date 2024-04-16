@@ -219,11 +219,11 @@ def post_group(conn, groupId, groupMessage, username):
 
 # Check for duplicate usernames
 def check_username(conn):
-    username = conn.recv(1024).decode()  # Get username at the beginning for both modes.
+    username = conn.recv(1024).decode().upper().strip()  # Get username at the beginning for both modes.
 
     while any(c['username'] == username for c in clients): # NO DUPLICATES on entire server
         conn.send("taken".encode())
-        username = conn.recv(1024).decode()
+        username = conn.recv(1024).decode().upper().strip()
         
     conn.send("valid".encode())
     return username
