@@ -125,7 +125,7 @@ def choose_username(client_socket):
         else: 
             break
     
-    return username
+    return username.upper().strip()
 
 # for mode 2: show availible groups and take user input, reprompt if necessary
 def pick_group_id(client_socket):
