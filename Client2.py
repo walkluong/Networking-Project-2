@@ -62,9 +62,9 @@ def receive_messages(client_socket, prompt):
 """
 HELPER FUNCTIONS
 """
-
+# starts the client and allows the to enter a server address and port number if they choose
 def choose_server_and_port():
-    print("Default server address: 'localhost' \nDefault port: 12345 \nPress ENTER to accept defaults\n")
+    print("\nDefault server address: 'localhost' \nDefault port: 12345 \nPress ENTER to accept defaults\n")
     host = input("Enter server address: ")
     port = input("Enter port number: ")
     
@@ -140,6 +140,7 @@ def pick_group_id(client_socket):
             group_id = input("INVALID GROUP ID, please enter valid group [1, 2, 3, 4, 5]: ")
     client_socket.send(group_id.encode())
 
+# prints all command options
 def print_options():
     print("\nUse these commands as they appear (CASE SENSITIVE)")
     print("\nCOMMANDS: ")
